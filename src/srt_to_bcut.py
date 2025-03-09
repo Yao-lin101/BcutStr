@@ -233,29 +233,8 @@ class SrtToBcut:
             new_clip = self.create_subtitle_clip(subtitle)
             subtitle_track['clips'].append(new_clip)
         
-        # 生成输出文件路径
-        output_file = self.json_template_path.parent / f"{self.json_template_path.stem}_updated.json"
-        
-        # 保存更新后的配置
-        with open(output_file, 'w', encoding='utf-8') as f:
+        # 保存更新后的配置到原文件
+        with open(self.json_template_path, 'w', encoding='utf-8') as f:
             json.dump(self.config, f, ensure_ascii=False, indent=4)
         
-        return str(output_file)
-
-def main():
-    """
-    主函数
-    """
-    # 设置文件路径
-    json_template = "testjson/纯视频.json"
-    srt_file = "teststr/还活着(1).srt"
-    
-    try:
-        converter = SrtToBcut(json_template, srt_file)
-        output_file = converter.convert()
-        print(f'转换成功！新配置文件已保存为: {output_file}')
-    except Exception as e:
-        print(f'转换失败：{str(e)}')
-
-if __name__ == "__main__":
-    main() 
+        return str(self.json_template_path) 
