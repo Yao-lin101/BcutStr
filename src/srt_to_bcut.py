@@ -174,33 +174,43 @@ class SrtToBcut:
         """
         with open(self.json_template_path, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
-            
-        # 获取字幕轨道
-        subtitle_track = next((track for track in self.config['tracks'] 
-                             if track['BTrackType'] == 0), None)
         
-        # 如果没有字幕轨道，创建一个新的
+        # 查找字幕轨道（BTrackType=0且不是MiddleTrack的轨道）
+        subtitle_track = None
+        for track in self.config['tracks']:
+            if track['BTrackType'] == 0 and not track.get('MiddleTrack', False):
+                subtitle_track = track
+                break
+        
+        # 如果没有找到字幕轨道，创建一个新的并插入到最上面
         if not subtitle_track:
-            subtitle_track = self.create_subtitle_track()
-            # 将新轨道插入到tracks列表的开头
+            subtitle_track = {
+                "BTrackLastSplitPos": 0,
+                "BTrackType": 0,
+                "clips": [],
+                "mute": False,
+                "split": None,
+                "trackIndex": 1
+            }
+            # 将字幕轨道插入到最上面
             self.config['tracks'].insert(0, subtitle_track)
-            # 更新轨道数量
-            self.config['trackCount'] = len(self.config['tracks'])
             # 更新其他轨道的索引
             for i, track in enumerate(self.config['tracks']):
                 track['trackIndex'] = i + 1
-        else:
-            # 如果有现有字幕轨道且有字幕片段，使用第一个字幕片段作为模板
-            if subtitle_track['clips']:
-                self.base_clip = copy.deepcopy(subtitle_track['clips'][0])
-                # 清除模板中的内容相关字段
-                self.base_clip['AssetInfo']['content'] = ""
-                self.base_clip['AssetInfo']['duration'] = 0
-                self.base_clip['duration'] = 0
-                self.base_clip['inPoint'] = 0
-                self.base_clip['outPoint'] = 0
-                self.base_clip['trimIn'] = 0
-                self.base_clip['trimOut'] = 0
+            # 更新轨道数量
+            self.config['trackCount'] = len(self.config['tracks'])
+        
+        # 如果有现有字幕轨道且有字幕片段，使用第一个字幕片段作为模板
+        if subtitle_track['clips']:
+            self.base_clip = copy.deepcopy(subtitle_track['clips'][0])
+            # 清除模板中的内容相关字段
+            self.base_clip['AssetInfo']['content'] = ""
+            self.base_clip['AssetInfo']['duration'] = 0
+            self.base_clip['duration'] = 0
+            self.base_clip['inPoint'] = 0
+            self.base_clip['outPoint'] = 0
+            self.base_clip['trimIn'] = 0
+            self.base_clip['trimOut'] = 0
         
         return subtitle_track
 
@@ -237,7 +247,7 @@ def main():
     主函数
     """
     # 设置文件路径
-    json_template = "testjson/11-44-04-256--{27b1e7cc-0907-4f15-bfc9-ff77fbf0c586}.json"
+    json_template = "testjson/纯视频.json"
     srt_file = "teststr/还活着(1).srt"
     
     try:
