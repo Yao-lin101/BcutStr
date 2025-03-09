@@ -64,11 +64,8 @@ class DraftManager:
 
     def format_draft_info(self, draft: Dict) -> str:
         """格式化草稿信息用于显示"""
-        modify_time = datetime.fromtimestamp(draft['modifyTime'] / 1000).strftime('%Y-%m-%d %H:%M:%S')
-        duration = draft.get('duration', 0) / 1000000  # 转换为秒
-        return f"名称: {draft['name']}\n" \
-               f"修改时间: {modify_time}\n" \
-               f"时长: {duration:.2f}秒"
+        modify_time = datetime.fromtimestamp(draft['modifyTime'] / 1000).strftime('%m-%d %H:%M')
+        return f"{draft['name']} ({modify_time})"
 
 def main():
     """测试函数"""

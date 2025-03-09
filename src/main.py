@@ -35,9 +35,7 @@ class BcutHelper:
         
         # 显示草稿列表
         for i, draft in enumerate(drafts, 1):
-            print(f"\n[{i}] {draft['name']}")
-            print(f"    修改时间: {datetime.fromtimestamp(draft['modifyTime']/1000).strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"    时长: {draft['duration']/1000000:.2f}秒")
+            print(f"[{i}] {self.draft_manager.format_draft_info(draft)}")
         
         # 用户选择
         while True:
