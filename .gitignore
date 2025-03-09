@@ -1,5 +1,9 @@
 testjson/
 teststr/
-backup/
-completed/
-input/*
+# 忽略backup和completed目录
+/backup/
+/completed/
+
+# 忽略input目录中的所有文件，但保留目录本身和.gitkeep
+/input/*
+!/input/.gitkeep
