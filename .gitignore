@@ -2,4 +2,4 @@ testjson/
 teststr/
 backup/
 completed/
-input/
+input/*
