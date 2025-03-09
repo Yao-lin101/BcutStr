@@ -35,9 +35,10 @@ class SrtToBcut:
         :return: 字幕列表
         """
         with open(self.srt_file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+            content = f.read().strip()  # 去除文件末尾的空白字符
 
-        subtitle_pattern = r'(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n((?:.*?\n)*?)(?:\n|$)'
+        # 修改正则表达式，使其更准确地匹配SRT格式
+        subtitle_pattern = r'(\d+)\r?\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\r?\n((?:.+(?:\r?\n)?)+)'
         subtitles = []
         
         for match in re.finditer(subtitle_pattern, content):
@@ -46,15 +47,98 @@ class SrtToBcut:
             end_time = self.parse_srt_time(match.group(3))
             text = match.group(4).strip()
             
-            subtitles.append({
+            subtitle = {
                 'index': index,
                 'start': start_time,
                 'end': end_time,
                 'text': text,
                 'duration': end_time - start_time
-            })
+            }
+            subtitles.append(subtitle)
+            print(f"解析到字幕: {subtitle}")  # 添加调试信息
         
+        print(f"总共解析到 {len(subtitles)} 个字幕")  # 添加调试信息
         return subtitles
+
+    def create_subtitle_clip_template(self) -> dict:
+        """
+        创建基础字幕片段模板
+        :return: 字幕片段模板
+        """
+        return {
+            "1000d": 0,
+            "10031": 0,
+            "10033": {"B": 1, "L": 0, "R": 1, "T": 0},
+            "10035": [-0.47519999742507935, 0.6909000277519226, -0.47519999742507935,
+                     0.8291000127792358, 0.47519999742507935, 0.8291000127792358,
+                     0.47519999742507935, 0.6909000277519226],
+            "10037": [0, -0.7599999904632568],
+            "10038": [0.3499999940395355, 1],
+            "10040": 0, "10041": 0, "10042": 0, "10043": 100, "10044": 1, "10045": 0,
+            "10051": 0, "10052": 0, "10053": 0, "10054": 0, "10055": 0, "10056": 0,
+            "10057": 0, "10058": 0, "10059": 0, "10081": "", "10082": -1, "10083": 0,
+            "10084": 0, "10085": 0, "10087": 0, "10088": 0, "10089": 0, "10092": 1,
+            "10093": -16777216, "10094": 25, "10095": 0, "10096": -16777216,
+            "10097": 80, "10098": 2, "10099": 2, "10100": 45, "10101": 0,
+            "10102": -16777216, "10103": 40, "10105": "思源黑体 CN",
+            "10301": 0, "10302": 0, "10303": 0, "10304": 0, "10306": 0, "10307": 0,
+            "10400": 0, "10501": 0,
+            "AssetInfo": {
+                "assetItemType": 1,
+                "audioType": 0,
+                "content": "",
+                "coverPath": "",
+                "displayName": "字幕",
+                "duration": 0,
+                "fontID": 0,
+                "fontSrcPath": "/Applications/BCUT.app/Contents/MacOS/../Resources/Font/Source Han Sans CN Medium.ttf",
+                "frameRateDen": -1,
+                "frameRateNum": -1,
+                "height": -1,
+                "itemName": "SubttCaption",
+                "originClipType": 260223104,
+                "originDuration": 0,
+                "originSrcFile": "",
+                "realMaterialId": "",
+                "shotClipId": "",
+                "shotIndex": -1,
+                "srcPath": "/Applications/BCUT.app/Contents/MacOS/../Resources/res/subtt/huazi/speech",
+                "type": 5,
+                "videoType": 0,
+                "width": -1
+            },
+            "BSpeedInfo": {
+                "BSpeedType": 1,
+                "pointListX": None,
+                "pointListY": None,
+                "speedCurveTypeName": "",
+                "speedRate": 1
+            },
+            "FreezeImage": False,
+            "IsDBVolume": True,
+            "MarkPointInfo": None,
+            "attachVoiceId": 0,
+            "cutInfo": {"bottom": 1, "left": 0, "right": 1, "top": 0},
+            "font_id": 0,
+            "keyFrameArray": None,
+            "network_font_id": 0,
+            "srcFontPath": "/Applications/BCUT.app/Contents/MacOS/../Resources/Font/Source Han Sans CN Medium.ttf"
+        }
+
+    def create_subtitle_track(self) -> dict:
+        """
+        创建新的字幕轨道
+        :return: 字幕轨道配置
+        """
+        return {
+            "BTrackLastSplitPos": 0,
+            "BTrackType": 0,
+            "MiddleTrack": True,
+            "clips": [],
+            "mute": False,
+            "split": None,
+            "trackIndex": 1
+        }
 
     def create_subtitle_clip(self, subtitle: dict) -> dict:
         """
@@ -63,19 +147,19 @@ class SrtToBcut:
         :return: 必剪字幕片段配置
         """
         if not self.base_clip:
-            raise ValueError("未初始化基础字幕片段模板")
+            self.base_clip = self.create_subtitle_clip_template()
 
         clip = copy.deepcopy(self.base_clip)
         
         # 更新关键信息
-        clip['30011'] = subtitle['start']  # inPoint
-        clip['30012'] = subtitle['duration']  # duration
-        clip['30021'] = subtitle['start']  # 起始位置
-        clip['duration'] = subtitle['duration']
-        clip['inPoint'] = subtitle['start']
-        clip['outPoint'] = subtitle['end']
-        clip['trimIn'] = 0
-        clip['trimOut'] = subtitle['duration']
+        clip['30011'] = subtitle['start']  # 片段在轨道上的起始时间
+        clip['30012'] = subtitle['duration']  # 片段持续时间
+        clip['30021'] = subtitle['start']  # 片段在轨道上的起始位置
+        clip['duration'] = subtitle['duration']  # 片段持续时间
+        clip['inPoint'] = subtitle['start']  # 片段内部起始位置
+        clip['outPoint'] = subtitle['end']  # 片段内部结束位置
+        clip['trimIn'] = 0  # 片段裁剪起始位置（相对于片段开始）
+        clip['trimOut'] = subtitle['duration']  # 片段裁剪结束位置（相对于片段开始）
         clip['AssetInfo']['content'] = subtitle['text']
         clip['AssetInfo']['duration'] = subtitle['duration']
         
@@ -95,10 +179,29 @@ class SrtToBcut:
         subtitle_track = next((track for track in self.config['tracks'] 
                              if track['BTrackType'] == 0), None)
         
-        if not subtitle_track or not subtitle_track['clips']:
-            raise ValueError("未找到有效的字幕轨道或字幕片段模板")
-            
-        self.base_clip = subtitle_track['clips'][0]
+        # 如果没有字幕轨道，创建一个新的
+        if not subtitle_track:
+            subtitle_track = self.create_subtitle_track()
+            # 将新轨道插入到tracks列表的开头
+            self.config['tracks'].insert(0, subtitle_track)
+            # 更新轨道数量
+            self.config['trackCount'] = len(self.config['tracks'])
+            # 更新其他轨道的索引
+            for i, track in enumerate(self.config['tracks']):
+                track['trackIndex'] = i + 1
+        else:
+            # 如果有现有字幕轨道且有字幕片段，使用第一个字幕片段作为模板
+            if subtitle_track['clips']:
+                self.base_clip = copy.deepcopy(subtitle_track['clips'][0])
+                # 清除模板中的内容相关字段
+                self.base_clip['AssetInfo']['content'] = ""
+                self.base_clip['AssetInfo']['duration'] = 0
+                self.base_clip['duration'] = 0
+                self.base_clip['inPoint'] = 0
+                self.base_clip['outPoint'] = 0
+                self.base_clip['trimIn'] = 0
+                self.base_clip['trimOut'] = 0
+        
         return subtitle_track
 
     def convert(self) -> str:
