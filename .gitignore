@@ -4,6 +4,7 @@ teststr/
 /backup/
 /backup_new/
 /completed/
+__pycache__/
 
 # 忽略input目录中的所有文件，但保留目录本身和.gitkeep
 /input/*
