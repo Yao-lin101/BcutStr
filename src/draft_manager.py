@@ -3,11 +3,21 @@ import os
 from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime
+import platform
+
 
 class DraftManager:
     def __init__(self):
         """初始化草稿管理器"""
-        self.drafts_dir = Path(os.path.expanduser("~/Movies/Bcut Drafts"))
+        system = platform.system()
+        if system == 'Windows':
+            self.drafts_dir = Path(os.path.expanduser("~/Documents/Bcut Drafts"))
+        elif system == 'Darwin':
+            self.drafts_dir = Path(os.path.expanduser("~/Movies/Bcut Drafts"))
+        else:
+            print("未找到草稿目录，请手动指定草稿目录")
+            self.drafts_dir = Path(input("请输入草稿目录路径: "))
+        
         self.draft_info_path = self.drafts_dir / "draftInfo.json"
         self.drafts = []
         self._load_drafts()
