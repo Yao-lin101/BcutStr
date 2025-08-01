@@ -48,18 +48,21 @@ class DraftManager:
         return None
 
     def get_latest_json_file(self, draft_id: str) -> Optional[Path]:
-        """获取指定草稿的最新JSON文件"""
+        """获取指定草稿的最新JSON/BJSON文件"""
         draft_dir = self.drafts_dir / draft_id
         if not draft_dir.exists():
             raise FileNotFoundError(f"草稿目录不存在: {draft_dir}")
 
-        # 获取目录下所有的json文件
+        # 获取目录下所有的json和bjson文件
         json_files = list(draft_dir.glob("*.json"))
-        if not json_files:
-            raise FileNotFoundError(f"未找到JSON文件: {draft_dir}")
+        bjson_files = list(draft_dir.glob("*.bjson"))
+        all_files = json_files + bjson_files
+        
+        if not all_files:
+            raise FileNotFoundError(f"未找到JSON/BJSON文件: {draft_dir}")
 
         # 按文件修改时间排序，返回最新的
-        latest_file = max(json_files, key=lambda f: f.stat().st_mtime)
+        latest_file = max(all_files, key=lambda f: f.stat().st_mtime)
         return latest_file
 
     def format_draft_info(self, draft: Dict) -> str:

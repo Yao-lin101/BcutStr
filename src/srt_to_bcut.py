@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 import copy
 from pathlib import Path
+from version_adapter import BcutVersionAdapter
 
 class SrtToBcut:
     def __init__(self, json_template_path: str, srt_file_path: str):
@@ -13,6 +14,7 @@ class SrtToBcut:
         """
         self.json_template_path = Path(json_template_path)
         self.srt_file_path = Path(srt_file_path)
+        self.adapter = BcutVersionAdapter(json_template_path)
         self.config = None
         self.base_clip = None
 
@@ -172,45 +174,12 @@ class SrtToBcut:
         """
         加载必剪JSON模板
         """
-        with open(self.json_template_path, 'r', encoding='utf-8') as f:
-            self.config = json.load(f)
+        self.config = self.adapter.load_config()
+        subtitle_track, existing_clips = self.adapter.get_subtitle_track_and_clips()
         
-        # 查找字幕轨道（BTrackType=0且不是MiddleTrack的轨道）
-        subtitle_track = None
-        for track in self.config['tracks']:
-            if track['BTrackType'] == 0 and not track.get('MiddleTrack', False):
-                subtitle_track = track
-                break
-        
-        # 如果没有找到字幕轨道，创建一个新的并插入到最上面
-        if not subtitle_track:
-            subtitle_track = {
-                "BTrackLastSplitPos": 0,
-                "BTrackType": 0,
-                "clips": [],
-                "mute": False,
-                "split": None,
-                "trackIndex": 1
-            }
-            # 将字幕轨道插入到最上面
-            self.config['tracks'].insert(0, subtitle_track)
-            # 更新其他轨道的索引
-            for i, track in enumerate(self.config['tracks']):
-                track['trackIndex'] = i + 1
-            # 更新轨道数量
-            self.config['trackCount'] = len(self.config['tracks'])
-        
-        # 如果有现有字幕轨道且有字幕片段，使用第一个字幕片段作为模板
-        if subtitle_track['clips']:
-            self.base_clip = copy.deepcopy(subtitle_track['clips'][0])
-            # 清除模板中的内容相关字段
-            self.base_clip['AssetInfo']['content'] = ""
-            self.base_clip['AssetInfo']['duration'] = 0
-            self.base_clip['duration'] = 0
-            self.base_clip['inPoint'] = 0
-            self.base_clip['outPoint'] = 0
-            self.base_clip['trimIn'] = 0
-            self.base_clip['trimOut'] = 0
+        # 如果有现有字幕片段，使用第一个作为模板
+        if existing_clips:
+            self.base_clip = existing_clips[0]
         
         return subtitle_track
 
@@ -226,15 +195,20 @@ class SrtToBcut:
         subtitles = self.parse_srt()
         
         # 清空现有字幕
-        subtitle_track['clips'] = []
+        if self.adapter.is_new_version:
+            subtitle_track['captions'] = []
+        else:
+            subtitle_track['clips'] = []
         
         # 创建新的字幕片段
         for subtitle in subtitles:
-            new_clip = self.create_subtitle_clip(subtitle)
-            subtitle_track['clips'].append(new_clip)
+            new_clip = self.adapter.create_subtitle_clip(subtitle, self.base_clip)
+            if self.adapter.is_new_version:
+                subtitle_track['captions'].append(new_clip)
+            else:
+                subtitle_track['clips'].append(new_clip)
         
-        # 保存更新后的配置到原文件
-        with open(self.json_template_path, 'w', encoding='utf-8') as f:
-            json.dump(self.config, f, ensure_ascii=False, indent=4)
+        # 保存更新后的配置
+        self.adapter.save_config()
         
         return str(self.json_template_path) 
