@@ -51,9 +51,9 @@ class BcutHelper:
                 print("请输入有效的数字")
 
     def backup_json(self, json_path: Path) -> Path:
-        """备份JSON文件"""
+        """备份JSON/BJSON文件"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_path = self.backup_dir / f"{json_path.stem}_{timestamp}.json"
+        backup_path = self.backup_dir / f"{json_path.stem}_{timestamp}{json_path.suffix}"
         shutil.copy2(json_path, backup_path)
         return backup_path
 
@@ -70,14 +70,14 @@ class BcutHelper:
                 print("用户取消操作")
                 return
             
-            # 3. 获取最新的JSON文件
+            # 3. 获取最新的项目文件
             json_path = self.draft_manager.get_latest_json_file(selected_draft['id'])
             if not json_path:
-                raise FileNotFoundError(f"未找到草稿的JSON文件")
+                raise FileNotFoundError(f"未找到草稿的项目文件")
             
-            # 4. 备份JSON文件
+            # 4. 备份项目文件
             backup_path = self.backup_json(json_path)
-            print(f"\nJSON文件已备份: {backup_path.name}")
+            print(f"\n项目文件已备份: {backup_path.name}")
             
             # 5. 执行转换
             converter = SrtToBcut(str(json_path), str(srt_file))
